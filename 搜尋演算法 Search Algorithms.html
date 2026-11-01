@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>搜尋演算法 Search Algorithms</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --ink:#1d2330; --muted:#6b7280; --line:#dfe3ea;
+    --sea:#e8f0f8; --accent:#2563eb; --accent-soft:#e0eafd;
+    --ok:#15803d; --ok-soft:#dcf5e3; --bad:#dc2626; --bad-soft:#fde2e2; --dim:#eef0f3;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#13161b; --card:#1b1f26; --ink:#e7eaf0; --muted:#9aa3b2; --line:#2c323c;
+      --sea:#1c2633; --accent:#60a5fa; --accent-soft:#1e2c47;
+      --ok:#4ade80; --ok-soft:#163322; --bad:#f87171; --bad-soft:#3a1a1a; --dim:#20252d; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:system-ui,-apple-system,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;}
+  .wrap{max-width:980px;margin:0 auto;padding:20px 16px 40px}
+  header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+  header h1{font-size:22px;margin:0}
+  header p{margin:4px 0 0;color:var(--muted);font-size:13px}
+  .lang{font:inherit;font-size:13px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);
+    background:var(--card);color:var(--ink);cursor:pointer;white-space:nowrap}
+  .lang:hover{border-color:var(--accent)}
+  .mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+
+  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-top:16px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card)}
+  .seg button{border:0;border-radius:0;background:transparent;padding:8px 14px;font:inherit;font-size:14px;color:var(--ink);cursor:pointer}
+  .seg button+button{border-left:1px solid var(--line)}
+  .seg button.on{background:var(--accent);color:#fff}
+  .seg.small button{padding:6px 11px;font-size:13px}
+  .hash-opts{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+
+  .panel{margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+  .top{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+  .btn{font:inherit;font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid var(--accent);
+    background:var(--accent);color:#fff;cursor:pointer}
+  .target{display:flex;align-items:center;gap:8px;font-size:14px}
+  .target b{font-size:22px;color:var(--accent);min-width:2.2em;text-align:center;
+    border:2px solid var(--accent);border-radius:10px;padding:2px 10px}
+  .counters{display:flex;gap:16px;font-size:13px;color:var(--muted);flex-wrap:wrap}
+  .counters b{color:var(--ink);font-size:18px;margin-left:4px}
+  #timeVal{display:inline-block;min-width:3.6em;text-align:right}
+
+  .instr{margin-top:12px;padding:10px 12px;border-left:4px solid var(--accent);background:var(--accent-soft);
+    border-radius:8px;font-size:14px;line-height:1.55}
+  .instr.err{border-color:var(--bad);background:var(--bad-soft)}
+  .instr.win{border-color:var(--ok);background:var(--ok-soft)}
+  .range{margin-top:10px;font-size:13px;color:var(--muted)}
+  .range b{color:var(--ink)}
+
+  .ships{display:grid;grid-template-columns:repeat(10,1fr);gap:6px;margin-top:14px}
+  @media (max-width:640px){ .ships{grid-template-columns:repeat(5,1fr)} }
+  .ship{position:relative;background:var(--sea);border:1.5px solid transparent;border-radius:10px;
+    height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;
+    user-select:none;transition:transform .12s, background .15s, opacity .2s}
+  .ship:hover{border-color:var(--accent)}
+  .ship .idx{position:absolute;top:3px;left:6px;font-size:10px;color:var(--muted)}
+  .ship .val{font-size:18px;font-weight:700}
+  .ship .hull{font-size:11px;color:var(--muted);margin-top:1px}
+  .ship.checked{background:var(--dim)}
+  .ship.checked .val{color:var(--muted)}
+  .ship.found{background:var(--ok-soft);border-color:var(--ok)}
+  .ship.found .val{color:var(--ok)}
+  .ship.out{opacity:.28;pointer-events:none}
+  .ship.locked{cursor:default}
+  .ship.locked:hover{border-color:transparent}
+
+  .buckets{display:flex;flex-direction:column;gap:6px;margin-top:14px}
+  .bucket{display:flex;align-items:center;gap:10px;padding:6px 8px;border:1.5px solid var(--line);
+    border-radius:10px;background:var(--card);transition:background .15s,border-color .15s}
+  .bucket.pick{cursor:pointer}
+  .bucket.pick:hover{border-color:var(--accent);background:var(--accent-soft)}
+  .bucket.active{border-color:var(--accent);background:var(--accent-soft)}
+  .bucket.faded{opacity:.4}
+  .slot{flex:0 0 74px;font-size:13px;font-weight:600}
+  .slot small{display:block;font-weight:400;color:var(--muted);font-size:11px}
+  .chain{display:flex;flex-wrap:wrap;align-items:center;gap:4px;min-height:40px}
+  .chain .empty{font-size:12px;color:var(--muted)}
+  .arrow{color:var(--muted);font-size:12px}
+  .node{min-width:46px;height:38px;padding:0 8px;display:flex;align-items:center;justify-content:center;
+    border-radius:8px;background:var(--sea);font-weight:700;font-size:15px;border:1.5px solid transparent;user-select:none}
+  .bucket.active .node{cursor:pointer}
+  .bucket.active .node:hover{border-color:var(--accent)}
+  .node.checked{background:var(--dim);color:var(--muted)}
+  .node.found{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+  .null{font-size:11px;color:var(--muted)}
+
+  .shake{animation:shake .35s}
+  @keyframes shake{20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}}
+
+  .cols{display:grid;grid-template-columns:1.2fr 1fr;gap:14px}
+  @media (max-width:760px){ .cols{grid-template-columns:1fr} }
+  h3{font-size:14px;margin:0 0 8px;color:var(--muted);font-weight:600}
+  .log{font-size:12.5px;line-height:1.6;max-height:220px;overflow:auto}
+  .log div{border-bottom:1px dashed var(--line);padding:2px 0}
+  .log .e{color:var(--bad)} .log .s{color:var(--ok);font-weight:600}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:5px 4px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:500}
+  .n{text-align:right;font-variant-numeric:tabular-nums}
+  .hidden{display:none!important}
+  details{margin-top:14px;font-size:14px;color:var(--muted)}
+  details summary{cursor:pointer;color:var(--ink)}
+  details li{margin:4px 0;line-height:1.55}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1 id="tTitle"></h1>
+      <p id="tSub"></p>
+    </div>
+    <button class="lang" id="langBtn"></button>
+  </header>
+
+  <div class="bar">
+    <div class="seg" id="modeSeg">
+      <button data-mode="linear" class="on"></button>
+      <button data-mode="binary"></button>
+      <button data-mode="hash"></button>
+    </div>
+    <div class="hash-opts hidden" id="hashOpts">
+      <span id="tDist"></span>
+      <div class="seg small" id="distSeg">
+        <button data-dist="random" class="on"></button>
+        <button data-dist="even"></button>
+        <button data-dist="cluster"></button>
+      </div>
+    </div>
+  </div>
+
+  <section class="panel">
+    <div class="top">
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <button class="btn" id="startBtn"></button>
+        <div class="target"><span id="tTarget"></span> <b class="mono" id="targetVal">--</b></div>
+      </div>
+      <div class="counters">
+        <span><span id="tCmp"></span><b class="mono" id="cmpVal">0</b></span>
+        <span><span id="tErr"></span><b class="mono" id="errVal">0</b></span>
+        <span><span id="tTime"></span><b class="mono" id="timeVal">0.0s</b></span>
+      </div>
+    </div>
+
+    <div class="instr" id="instr"></div>
+    <div class="range hidden" id="rangeInfo"></div>
+
+    <div id="shipsView" class="ships"></div>
+    <div id="hashView" class="buckets hidden"></div>
+  </section>
+
+  <div class="cols">
+    <section class="panel">
+      <h3 id="tLog"></h3>
+      <div class="log mono" id="log"></div>
+    </section>
+    <section class="panel">
+      <h3 id="tHist"></h3>
+      <table>
+        <thead><tr id="histHead"></tr></thead>
+        <tbody id="hist"></tbody>
+      </table>
+    </section>
+  </div>
+
+  <details>
+    <summary id="tRules"></summary>
+    <ol id="rulesList"></ol>
+  </details>
+</div>
+
+<script>
+(() => {
+  const N = 20, M = 8;
+  const $ = id => document.getElementById(id);
+  const rand = (a,b) => a + Math.floor(Math.random()*(b-a+1));
+  const shuffle = arr => { for(let i=arr.length-1;i>0;i--){const j=rand(0,i);[arr[i],arr[j]]=[arr[j],arr[i]];} return arr; };
+
+  // ---------- i18n ----------
+  const T = {
+    zh: {
+      title:"⚓ 搜尋演算法",
+      sub:"艦艇編號藏在迷霧中，點一艘＝比較一次。用演算法規則找出目標艦，比比看誰用的比較次數最少。",
+      langBtn:"English",
+      mode:{linear:"線性搜尋", binary:"二元搜尋", hash:"雜湊搜尋"},
+      dist:{random:"隨機分配", even:"平均分配", cluster:"過度集中"},
+      distLabel:"資料分佈",
+      start:"開始挑戰", restart:"重新開始", again:"再玩一局",
+      target:"目標值", cmp:"比較次數", err:"違規次數", time:"費時",
+      log:"操作紀錄", hist:"成績比較",
+      histHead:["#","模式","比較","違規","費時","理論最多"], histEmpty:"尚無紀錄",
+      rules:"遊戲規則",
+      rulesList:[
+        "<b>線性搜尋：</b>艦艇未排序。按「開始挑戰」顯示目標值後，必須從 Index 0 開始，由左至右逐一點選比對，不可跳過或顛倒順序。",
+        "<b>二元搜尋：</b>艦艇已由小到大排序。每次必須點選目前範圍的中間位置 <span class='mono'>mid = ⌊(low + high) ÷ 2⌋</span>；點錯會被阻擋。比對後系統依大小縮小範圍。",
+        "<b>雜湊搜尋：</b>雜湊函數為 <span class='mono'>h(k) = k mod 8</span>。<br>階段一：算出目標值的雜湊值，點選正確的桶子（Slot 0～7）。<br>階段二：在該桶子的鏈結串列中，由頭（head）至尾依序逐一點選比對。<br>三種分佈：<b>隨機分配</b>＝資料隨機產生；<b>平均分配</b>＝每桶 2～3 艘；<b>過度集中</b>＝大量碰撞擠在同一桶，觀察鏈結串列變長的代價。",
+        "只有「點艦艇比對」算比較次數；違反演算法規則的點擊記為違規次數。計時從按下「開始挑戰」起算，找到目標時停止。"
+      ],
+      ships:n=>`${n} 艘`, empty:"（空）",
+      ready:"系統就緒。選擇模式後按「開始挑戰」。",
+      idle:{
+        linear:"線性搜尋：艦艇<b>未排序</b>。按「開始挑戰」後，從 Index 0 開始由左至右逐一比對。",
+        binary:"二元搜尋：艦艇<b>已由小到大排序</b>。每次只能點中間位置 <span class='mono'>⌊(low+high)/2⌋</span>。",
+        hash:d=>`雜湊搜尋（${d}）：先算 <span class='mono'>目標值 mod 8</span> 選桶子，再沿鏈結串列由頭比對。`
+      },
+      logNew:(m,t)=>`── 新挑戰：${m}，目標值 ${t}`,
+      linStart:t=>`請從 <b>Index 0</b> 開始，依序點選艦艇比對，找出 <b class="mono">${t}</b>。`,
+      binStart:(l,h)=>`請點選中間位置：mid = ⌊(${l} + ${h}) ÷ 2⌋ = <b>?</b>`,
+      hashStart:t=>`<b>階段一：</b>計算 h(${t}) = ${t} mod 8 = <b>?</b>，然後點選正確的 Slot。`,
+      range:(l,h)=>`目前範圍：low = <b class="mono">${l}</b>，high = <b class="mono">${h}</b>（共 ${h-l+1} 艘，其餘已排除）`,
+      rangeDone:"搜尋結束。",
+      linWrong:n=>`⛔ 不可跳過或顛倒順序！線性搜尋下一個必須比對 <b>Index ${n}</b>。`,
+      linWrongLog:(i,n)=>`✗ 點了 Index ${i}，應為 Index ${n}`,
+      cmpEq:(c,i,v,t)=>`比較 #${c}：[${i}] = ${v} == ${t} ✓`,
+      cmpNe:(c,i,v,t)=>`比較 #${c}：[${i}] = ${v} ≠ ${t}`,
+      linNext:(i,v,t,n)=>`[${i}] = ${v}，不是 ${t}。繼續比對 <b>Index ${n}</b>。`,
+      binWrong:(i,l,h)=>`⛔ Index ${i} 不是中間位置！請計算 mid = ⌊(${l} + ${h}) ÷ 2⌋ = ⌊${(l+h)/2}⌋。`,
+      binWrongLog:(i,l,h)=>`✗ 點了 Index ${i}，不是範圍 [${l}, ${h}] 的中間`,
+      binEqLog:(c,m,v,t)=>`比較 #${c}：mid=${m}，[${m}] = ${v} == ${t} ✓`,
+      binLoLog:(c,m,v,t)=>`比較 #${c}：mid=${m}，[${m}] = ${v} < ${t} → low = ${m+1}`,
+      binHiLog:(c,m,v,t)=>`比較 #${c}：mid=${m}，[${m}] = ${v} > ${t} → high = ${m-1}`,
+      binLo:(m,v,t,l,h)=>`[${m}] = ${v} 比 ${t} <b>小</b>，目標在右半邊 → low = ${l}。<br>下一個中間位置 mid = ⌊(${l} + ${h}) ÷ 2⌋ = <b>?</b>`,
+      binHi:(m,v,t,l,h)=>`[${m}] = ${v} 比 ${t} <b>大</b>，目標在左半邊 → high = ${h}。<br>下一個中間位置 mid = ⌊(${l} + ${h}) ÷ 2⌋ = <b>?</b>`,
+      slotWrong:(s,t)=>`⛔ Slot ${s} 不對。h(k) = k mod 8，請重算 ${t} ÷ 8 的<b>餘數</b>。`,
+      slotWrongLog:(s,t)=>`✗ 選了 Slot ${s}（${t} mod 8 ≠ ${s}）`,
+      slotOkLog:(t,s,L)=>`h(${t}) = ${t} mod 8 = ${s} → 進入 Slot ${s}（鏈長 ${L}）`,
+      slotOk:(t,s)=>`✅ ${t} mod 8 = ${s}。<b>階段二：</b>從 Slot ${s} 鏈結串列的<b>頭節點</b>開始，依序點選比對。`,
+      nodeWrong:n=>`⛔ 鏈結串列只能從頭往後走！下一個要比對的是第 <b>${n}</b> 個節點。`,
+      nodeWrongLog:(j,n)=>`✗ 跳到第 ${j} 個節點，應為第 ${n} 個`,
+      nodeEqLog:(c,j,v,t)=>`比較 #${c}：節點 ${j} = ${v} == ${t} ✓`,
+      nodeNeLog:(c,j,v,t)=>`比較 #${c}：節點 ${j} = ${v} ≠ ${t} → next`,
+      nodeNext:(j,v,t,n)=>`節點 ${j} = ${v}，不是 ${t}。沿著指標往下：比對第 <b>${n}</b> 個節點。`,
+      noteLin:i=>`目標在 Index ${i}，線性搜尋需要 ${i+1} 次比較（最多 ${N} 次）。`,
+      noteBin:w=>`${N} 艘排序資料，二元搜尋最多只需 ⌈log₂(${N}+1)⌉ = ${w} 次比較。`,
+      noteHash:(s,L,j)=>`算一次雜湊就跳到 Slot ${s}；這條鏈長 ${L}，目標在第 ${j} 個節點。`,
+      win:(c,e,tm,note)=>`🎯 <b>找到了！</b>共 <b>${c}</b> 次比較${e?`，違規 ${e} 次`:""}，費時 <b>${tm}</b>。${note}`,
+      winLog:(t,c,e,tm)=>`✓ 找到 ${t}：比較 ${c} 次，違規 ${e} 次，費時 ${tm}`
+    },
+    en: {
+      title:"⚓ Search Algorithms",
+      sub:"Ship codes are hidden in the fog — each click is one comparison. Follow the algorithm's rules to find the target in as few comparisons as you can.",
+      langBtn:"繁體中文",
+      mode:{linear:"Linear Search", binary:"Binary Search", hash:"Hash Search"},
+      dist:{random:"Random", even:"Balanced", cluster:"Clustered"},
+      distLabel:"Distribution",
+      start:"Start Challenge", restart:"Restart", again:"Play Again",
+      target:"Target", cmp:"Comparisons", err:"Rule breaks", time:"Time",
+      log:"Activity Log", hist:"Results",
+      histHead:["#","Mode","Comp.","Breaks","Time","Max"], histEmpty:"No results yet",
+      rules:"How to play",
+      rulesList:[
+        "<b>Linear Search:</b> ships are unsorted. After the target appears, check ships one by one starting at Index 0, left to right — no skipping, no going backwards.",
+        "<b>Binary Search:</b> ships are sorted ascending. You must always click the middle of the current range, <span class='mono'>mid = ⌊(low + high) ÷ 2⌋</span>; any other click is blocked. After each comparison the range shrinks.",
+        "<b>Hash Search:</b> hash function <span class='mono'>h(k) = k mod 8</span>.<br>Stage 1: compute the target's hash and click the correct bucket (Slot 0–7).<br>Stage 2: walk that bucket's linked list from head to tail, one node at a time.<br>Distributions: <b>Random</b> = random data; <b>Balanced</b> = 2–3 ships per bucket; <b>Clustered</b> = many collisions in one bucket, showing the cost of long chains.",
+        "Only clicking a ship counts as a comparison; clicks that break the algorithm's rules count as rule breaks. The timer starts at “Start Challenge” and stops when the target is found."
+      ],
+      ships:n=>`${n} ship${n===1?"":"s"}`, empty:"(empty)",
+      ready:"Ready. Choose a mode and press Start Challenge.",
+      idle:{
+        linear:"Linear Search: ships are <b>unsorted</b>. After starting, check from Index 0 left to right.",
+        binary:"Binary Search: ships are <b>sorted ascending</b>. You may only click the middle <span class='mono'>⌊(low+high)/2⌋</span>.",
+        hash:d=>`Hash Search (${d}): compute <span class='mono'>target mod 8</span> to pick a bucket, then walk its linked list from the head.`
+      },
+      logNew:(m,t)=>`── New challenge: ${m}, target ${t}`,
+      linStart:t=>`Start at <b>Index 0</b> and check ships in order to find <b class="mono">${t}</b>.`,
+      binStart:(l,h)=>`Click the middle: mid = ⌊(${l} + ${h}) ÷ 2⌋ = <b>?</b>`,
+      hashStart:t=>`<b>Stage 1:</b> compute h(${t}) = ${t} mod 8 = <b>?</b>, then click that Slot.`,
+      range:(l,h)=>`Current range: low = <b class="mono">${l}</b>, high = <b class="mono">${h}</b> (${h-l+1} ships; the rest are eliminated)`,
+      rangeDone:"Search finished.",
+      linWrong:n=>`⛔ No skipping or going back! Linear search must check <b>Index ${n}</b> next.`,
+      linWrongLog:(i,n)=>`✗ Clicked Index ${i}, expected Index ${n}`,
+      cmpEq:(c,i,v,t)=>`Comp #${c}: [${i}] = ${v} == ${t} ✓`,
+      cmpNe:(c,i,v,t)=>`Comp #${c}: [${i}] = ${v} ≠ ${t}`,
+      linNext:(i,v,t,n)=>`[${i}] = ${v}, not ${t}. Check <b>Index ${n}</b> next.`,
+      binWrong:(i,l,h)=>`⛔ Index ${i} is not the middle! Compute mid = ⌊(${l} + ${h}) ÷ 2⌋ = ⌊${(l+h)/2}⌋.`,
+      binWrongLog:(i,l,h)=>`✗ Clicked Index ${i}, not the middle of [${l}, ${h}]`,
+      binEqLog:(c,m,v,t)=>`Comp #${c}: mid=${m}, [${m}] = ${v} == ${t} ✓`,
+      binLoLog:(c,m,v,t)=>`Comp #${c}: mid=${m}, [${m}] = ${v} < ${t} → low = ${m+1}`,
+      binHiLog:(c,m,v,t)=>`Comp #${c}: mid=${m}, [${m}] = ${v} > ${t} → high = ${m-1}`,
+      binLo:(m,v,t,l,h)=>`[${m}] = ${v} is <b>smaller</b> than ${t}, so search the right half → low = ${l}.<br>Next mid = ⌊(${l} + ${h}) ÷ 2⌋ = <b>?</b>`,
+      binHi:(m,v,t,l,h)=>`[${m}] = ${v} is <b>larger</b> than ${t}, so search the left half → high = ${h}.<br>Next mid = ⌊(${l} + ${h}) ÷ 2⌋ = <b>?</b>`,
+      slotWrong:(s,t)=>`⛔ Slot ${s} is wrong. h(k) = k mod 8 — find the <b>remainder</b> of ${t} ÷ 8.`,
+      slotWrongLog:(s,t)=>`✗ Chose Slot ${s} (${t} mod 8 ≠ ${s})`,
+      slotOkLog:(t,s,L)=>`h(${t}) = ${t} mod 8 = ${s} → Slot ${s} (chain length ${L})`,
+      slotOk:(t,s)=>`✅ ${t} mod 8 = ${s}. <b>Stage 2:</b> start at the <b>head</b> of Slot ${s}'s linked list and check nodes in order.`,
+      nodeWrong:n=>`⛔ A linked list is walked from the head! Check node <b>${n}</b> next.`,
+      nodeWrongLog:(j,n)=>`✗ Jumped to node ${j}, expected node ${n}`,
+      nodeEqLog:(c,j,v,t)=>`Comp #${c}: node ${j} = ${v} == ${t} ✓`,
+      nodeNeLog:(c,j,v,t)=>`Comp #${c}: node ${j} = ${v} ≠ ${t} → next`,
+      nodeNext:(j,v,t,n)=>`Node ${j} = ${v}, not ${t}. Follow the pointer: check node <b>${n}</b>.`,
+      noteLin:i=>`Target at Index ${i}: linear search needed ${i+1} comparisons (max ${N}).`,
+      noteBin:w=>`With ${N} sorted ships, binary search needs at most ⌈log₂(${N}+1)⌉ = ${w} comparisons.`,
+      noteHash:(s,L,j)=>`One hash jumped straight to Slot ${s}; its chain has ${L} node${L===1?"":"s"} and the target was node ${j}.`,
+      win:(c,e,tm,note)=>`🎯 <b>Found it!</b> <b>${c}</b> comparison${c===1?"":"s"}${e?`, ${e} rule break${e===1?"":"s"}`:""}, time <b>${tm}</b>. ${note}`,
+      winLog:(t,c,e,tm)=>`✓ Found ${t}: ${c} comparisons, ${e} rule breaks, ${tm}`
+    }
+  };
+  let lang="zh";
+  const t = () => T[lang];
+
+  // ---------- state ----------
+  let mode="linear", dist="random", running=false, done=false;
+  let data=[], target=null, cmp=0, err=0, history=[];
+  let next=0, checked=new Set();
+  let low=0, high=N-1;
+  let table=[], stage=1, slotChosen=null, chainNext=0;
+  let t0=0, elapsed=0, timerId=null;
+  let instrState=null;     // {key, args, kind} so the instruction re-renders on language switch
+  let logItems=[];         // {key, args, cls}
+
+  // ---------- timer ----------
+  const fmt = ms => (ms/1000).toFixed(1)+"s";
+  function timerStart(){ timerStop(); t0=performance.now(); elapsed=0; timerId=setInterval(()=>{ elapsed=performance.now()-t0; $("timeVal").textContent=fmt(elapsed); },100); }
+  function timerStop(){ if(timerId){ clearInterval(timerId); timerId=null; elapsed=performance.now()-t0; } $("timeVal").textContent=fmt(elapsed); }
+
+  // ---------- data ----------
+  function uniqueCodes(n){ const s=new Set(); while(s.size<n) s.add(rand(10,99)); return [...s]; }
+  function codesInSlot(slot){ const out=[]; for(let v=10;v<=99;v++) if(v%M===slot) out.push(v); return out; }
+  function buildHashData(){
+    let codes=[];
+    if(dist==="random") codes=uniqueCodes(N);
+    else if(dist==="even"){
+      shuffle([3,3,3,3,2,2,2,2]).forEach((k,slot)=>codes.push(...shuffle(codesInSlot(slot)).slice(0,k)));
+    } else {
+      const hot=rand(0,M-1);
+      codes.push(...shuffle(codesInSlot(hot)).slice(0,10));
+      codes.push(...shuffle([...Array(90)].map((_,i)=>i+10).filter(v=>v%M!==hot)).slice(0,N-10));
+    }
+    codes=shuffle(codes);
+    table=Array.from({length:M},()=>[]);
+    codes.forEach(v=>table[v%M].push(v));
+    return codes;
+  }
+  function newRound(){
+    cmp=0; err=0; done=false; checked=new Set(); next=0;
+    low=0; high=N-1; stage=1; slotChosen=null; chainNext=0;
+    if(mode==="hash") data=buildHashData();
+    else { data=shuffle(uniqueCodes(N)); if(mode==="binary") data.sort((a,b)=>a-b); }
+    target=data[rand(0,data.length-1)];
+    if(mode==="hash" && dist==="cluster" && Math.random()<0.75){
+      const hot=table.reduce((a,c)=>c.length>a.length?c:a,[]);
+      target=hot[rand(0,hot.length-1)];
+    }
+  }
+
+  // ---------- message helpers (stored as keys so they can be re-translated) ----------
+  function resolve(key,args){ const v=key.split(".").reduce((o,k)=>o[k],t()); return typeof v==="function"?v(...args):v; }
+  function say(key,args=[],kind){ instrState={key,args,kind}; paintInstr(); }
+  function paintInstr(){ const el=$("instr"); if(!instrState) return; el.innerHTML=resolve(instrState.key,instrState.args); el.className="instr"+(instrState.kind?" "+instrState.kind:""); }
+  function log(key,args=[],cls){ logItems.unshift({key,args,cls}); paintLog(); }
+  function paintLog(){ $("log").innerHTML=""; logItems.forEach(it=>{ const d=document.createElement("div"); d.textContent=resolve(it.key,it.args); if(it.cls) d.className=it.cls; $("log").appendChild(d); }); }
+  function shake(el){ el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake"); }
+  function counters(){ $("cmpVal").textContent=cmp; $("errVal").textContent=err; }
+  const modeLabel = (m,d) => t().mode[m] + (m==="hash" ? "（"+t().dist[d]+"）" : "");
+  const modeLabelEn = (m,d) => t().mode[m] + (m==="hash" ? " ("+t().dist[d]+")" : "");
+  const label = (m,d) => lang==="zh" ? modeLabel(m,d) : modeLabelEn(m,d);
+
+  // ---------- static text ----------
+  function paintStatic(){
+    const L=t();
+    document.documentElement.lang = lang==="zh" ? "zh-Hant" : "en";
+    document.title = lang==="zh" ? "搜尋演算法 Search Algorithms" : "Search Algorithms 搜尋演算法";
+    $("tTitle").textContent=L.title; $("tSub").textContent=L.sub; $("langBtn").textContent=L.langBtn;
+    [...$("modeSeg").children].forEach(b=>b.textContent=L.mode[b.dataset.mode]);
+    [...$("distSeg").children].forEach(b=>b.textContent=L.dist[b.dataset.dist]);
+    $("tDist").textContent=L.distLabel; $("tTarget").textContent=L.target;
+    $("tCmp").textContent=L.cmp; $("tErr").textContent=L.err; $("tTime").textContent=L.time;
+    $("tLog").textContent=L.log; $("tHist").textContent=L.hist; $("tRules").textContent=L.rules;
+    $("histHead").innerHTML=L.histHead.map((h,i)=>`<th class="${i>=2?"n":""}">${h}</th>`).join("");
+    $("rulesList").innerHTML=L.rulesList.map(x=>`<li>${x}</li>`).join("");
+    renderHistory(); paintInstr(); paintLog();
+  }
+
+  // ---------- rendering ----------
+  function renderShips(){
+    const box=$("shipsView"); box.innerHTML="";
+    data.forEach((v,i)=>{
+      const d=document.createElement("div"); d.className="ship";
+      const revealed = checked.has(i) || done;
+      d.innerHTML=`<span class="idx mono">${i}</span><span class="val mono">${revealed?v:"?"}</span><span class="hull">🚢</span>`;
+      if(checked.has(i)) d.classList.add(v===target?"found":"checked");
+      if(done && v===target) d.classList.add("found");
+      if(mode==="binary" && running && (i<low||i>high)) d.classList.add("out");
+      if(!running) d.classList.add("locked");
+      d.addEventListener("click",()=>onShip(i,d));
+      box.appendChild(d);
+    });
+    const r=$("rangeInfo");
+    if(mode==="binary" && (running||done)){
+      r.classList.remove("hidden");
+      r.innerHTML = done ? t().rangeDone : t().range(low,high);
+    } else r.classList.add("hidden");
+  }
+  function renderHash(){
+    const box=$("hashView"); box.innerHTML="";
+    table.forEach((chain,s)=>{
+      const b=document.createElement("div"); b.className="bucket";
+      if(running && stage===1) b.classList.add("pick");
+      if(slotChosen===s) b.classList.add("active");
+      else if(slotChosen!==null) b.classList.add("faded");
+      b.innerHTML=`<div class="slot">Slot ${s}<small>${t().ships(chain.length)}</small></div>`;
+      const c=document.createElement("div"); c.className="chain";
+      if(!chain.length) c.innerHTML=`<span class="empty">${t().empty}</span>`;
+      chain.forEach((v,j)=>{
+        if(j>0){ const a=document.createElement("span"); a.className="arrow"; a.textContent="→"; c.appendChild(a); }
+        const n=document.createElement("div"); n.className="node mono";
+        const key=s+":"+j;
+        n.textContent = (checked.has(key) || done) ? v : "?";
+        if(checked.has(key)) n.classList.add(v===target?"found":"checked");
+        if(done && v===target) n.classList.add("found");
+        n.title = j===0 ? "head" : "";
+        n.addEventListener("click",e=>{ e.stopPropagation(); onNode(s,j,n); });
+        c.appendChild(n);
+      });
+      if(chain.length){ const z=document.createElement("span"); z.className="null mono"; z.textContent="→ null"; c.appendChild(z); }
+      b.appendChild(c);
+      b.addEventListener("click",()=>onSlot(s,b));
+      box.appendChild(b);
+    });
+  }
+  function render(){
+    $("hashOpts").classList.toggle("hidden", mode!=="hash");
+    $("shipsView").classList.toggle("hidden", mode==="hash");
+    $("hashView").classList.toggle("hidden", mode!=="hash");
+    $("targetVal").textContent = running||done ? target : "--";
+    $("startBtn").textContent = running ? t().restart : (done ? t().again : t().start);
+    counters();
+    if(mode==="hash"){ $("rangeInfo").classList.add("hidden"); renderHash(); } else renderShips();
+  }
+
+  // ---------- flow ----------
+  function idleView(){
+    timerStop(); elapsed=0; $("timeVal").textContent=fmt(0);
+    running=false; newRound(); done=false; target=null;
+    if(mode==="hash") say("idle.hash",[{toString:()=>t().dist[dist]}]); else say("idle."+mode);
+    render();
+  }
+
+  function start(){
+    newRound(); running=true; timerStart();
+    log("logNew",[ {toString:()=>label(mode,dist)}, target ]);
+    if(mode==="linear") say("linStart",[target]);
+    if(mode==="binary") say("binStart",[low,high]);
+    if(mode==="hash")   say("hashStart",[target]);
+    render();
+  }
+  function finish(where){
+    timerStop(); running=false; done=true;
+    const tm=fmt(elapsed);
+    let worst, noteKey, noteArgs;
+    if(mode==="linear"){ worst=N; noteKey="noteLin"; noteArgs=[where]; }
+    if(mode==="binary"){ worst=Math.ceil(Math.log2(N+1)); noteKey="noteBin"; noteArgs=[worst]; }
+    if(mode==="hash"){ worst=table[slotChosen].length; noteKey="noteHash"; noteArgs=[slotChosen,worst,where+1]; }
+    const note={toString:()=>resolve(noteKey,noteArgs)};
+    say("win",[cmp,err,tm,note],"win");
+    log("winLog",[target,cmp,err,tm],"s");
+    history.unshift({m:mode, d:dist, cmp, err, tm, worst});
+    renderHistory(); render();
+  }
+  function renderHistory(){
+    $("hist").innerHTML = history.length ? history.slice(0,10).map((h,i)=>
+      `<tr><td>${history.length-i}</td><td>${label(h.m,h.d)}</td><td class="n">${h.cmp}</td><td class="n">${h.err}</td><td class="n">${h.tm}</td><td class="n">${h.worst}</td></tr>`).join("")
+      : `<tr><td colspan="6" style="color:var(--muted)">${t().histEmpty}</td></tr>`;
+  }
+
+  // ---------- linear & binary ----------
+  function onShip(i, el){
+    if(!running) return;
+    if(mode==="linear"){
+      if(i!==next){ err++; counters(); shake(el); say("linWrong",[next],"err"); log("linWrongLog",[i,next],"e"); return; }
+      cmp++; checked.add(i); const v=data[i];
+      if(v===target){ log("cmpEq",[cmp,i,v,target]); return finish(i); }
+      log("cmpNe",[cmp,i,v,target]); next++;
+      say("linNext",[i,v,target,next]); render(); return;
+    }
+    const mid=Math.floor((low+high)/2);
+    if(i!==mid){ err++; counters(); shake(el); say("binWrong",[i,low,high],"err"); log("binWrongLog",[i,low,high],"e"); return; }
+    cmp++; checked.add(i); const v=data[i];
+    if(v===target){ log("binEqLog",[cmp,mid,v,target]); return finish(mid); }
+    if(target>v){ log("binLoLog",[cmp,mid,v,target]); low=mid+1; say("binLo",[mid,v,target,low,high]); }
+    else        { log("binHiLog",[cmp,mid,v,target]); high=mid-1; say("binHi",[mid,v,target,low,high]); }
+    render();
+  }
+
+  // ---------- hash ----------
+  function onSlot(s, el){
+    if(!running || stage!==1) return;
+    const h=target%M;
+    if(s!==h){ err++; counters(); shake(el); say("slotWrong",[s,target],"err"); log("slotWrongLog",[s,target],"e"); return; }
+    stage=2; slotChosen=s; chainNext=0;
+    log("slotOkLog",[target,s,table[s].length]); say("slotOk",[target,s]); render();
+  }
+  function onNode(s, j, el){
+    if(!running) return;
+    if(stage===1){ onSlot(s, el.closest(".bucket")); return; }
+    if(s!==slotChosen) return;
+    if(j!==chainNext){ err++; counters(); shake(el); say("nodeWrong",[chainNext+1],"err"); log("nodeWrongLog",[j+1,chainNext+1],"e"); return; }
+    cmp++; checked.add(s+":"+j); const v=table[s][j];
+    if(v===target){ log("nodeEqLog",[cmp,j+1,v,target]); return finish(j); }
+    log("nodeNeLog",[cmp,j+1,v,target]); chainNext++;
+    say("nodeNext",[j+1,v,target,chainNext+1]); render();
+  }
+
+  // ---------- controls ----------
+  $("modeSeg").addEventListener("click",e=>{
+    const b=e.target.closest("button"); if(!b) return;
+    mode=b.dataset.mode; [...$("modeSeg").children].forEach(x=>x.classList.toggle("on",x===b)); idleView();
+  });
+  $("distSeg").addEventListener("click",e=>{
+    const b=e.target.closest("button"); if(!b) return;
+    dist=b.dataset.dist; [...$("distSeg").children].forEach(x=>x.classList.toggle("on",x===b)); idleView();
+  });
+  $("startBtn").addEventListener("click",start);
+  $("langBtn").addEventListener("click",()=>{ lang = lang==="zh"?"en":"zh"; paintStatic(); render(); });
+
+  log("ready");
+  paintStatic();
+  idleView();
+})();
+</script>
+</body>
+</html>
